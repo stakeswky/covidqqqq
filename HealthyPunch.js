@@ -191,6 +191,7 @@ const API = {
      * @return {Promise<string>}
      */
     sendToMe(text, desp) {
+        if (!SCKEY) return Promise.reject('未在环境变量里设置SCKEY, 取消Server酱推送')
         return new Promise((resolve, reject) => {
             HttpRequest({
                 type: 'GET',
@@ -260,6 +261,13 @@ const fn = {
     toMarkDown(text) {
         console.log(text);
         return text + '\n\n'
+    },
+    /**
+     * 隐私化
+     * @param {string} text
+     */
+    hideSecret(text) {
+        return text.replace(/./g, '*');//.split('').map((it, n) => n % 2 ? '*' : it).join('')
     }
 };
 (() => {
@@ -269,13 +277,17 @@ const fn = {
     API.initSignIn()
         .then(data => {
             desp += md(data);
-            desp += md(`成功获取到Cookie:\n\n\`${Cookie.replace(/./g, '*')}\``);
-            desp += md(`成功获取到token:\n\n\`${__token__.replace(/./g, '*')}\``);
-            return API.getLink(USERNAME, PASSWORD);
+            desp += md(`成功获取到Cookie:\n\n\`${fn.hideSecret(Cookie)}\``);
+            desp += md(`成功获取到token:\n\n\`${fn.hideSecret(__token__)}\``);
+            if (USERNAME && PASSWORD) {
+                return API.getLink(USERNAME, PASSWORD);
+            } else {
+                return Promise.reject('未在环境变量里设置USERNAME, PASSWORD')
+            }
         })
         .then(data => {
             desp += md('登陆成功');
-            desp += md(`成功获取到跳转链接:\n\n\`${data.replace(/./g, '*')}\``);
+            desp += md(`成功获取到跳转链接:\n\n\`${fn.hideSecret(data)}\``);
             return API.setAuthorization(data);
         })
         .then(data => {
@@ -298,7 +310,7 @@ const fn = {
             return Promise.resolve();
         })
         .then(() => {
-            return API.sendToMe('健康打卡通知', desp);
+            return API.sendToMe('健康打卡ok', desp);
         })
         .catch(err => {
             desp += fn.toMarkDown(err)
